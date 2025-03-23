@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import TensorFlowInit from "@/components/TensorFlowInit";
+import TensorFlowInit from "@/components/tensor-flow-init";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { useObjectDetection } from '@/hooks/useObjectDetection';
+import { useObjectDetection } from '@/hooks/use-object-detection';
 import { DetectedObject } from '@tensorflow-models/coco-ssd';
 
 interface WebcamFeedProps {

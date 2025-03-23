@@ -1,4 +1,4 @@
-import WebcamPrompt from "@/components/WebcamPrompt";
+import WebcamPrompt from "@/components/webcam-prompt";
 
 export default function Home() {
   return (

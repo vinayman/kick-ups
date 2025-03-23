@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import { useState } from "react";
-import WebcamFeed from "./WebcamFeed";
+import WebcamFeed from "./webcam-feed";
 
 export default function WebcamPrompt() {
   const [isLoading, setIsLoading] = useState(false);
