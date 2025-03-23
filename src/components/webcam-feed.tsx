@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { useObjectDetection } from '@/hooks/use-object-detection';
-import { DetectedObject } from '@tensorflow-models/coco-ssd';
+import * as poseDetection from '@tensorflow-models/pose-detection';
+import { usePoseDetection } from '@/hooks/use-pose-detection';
+import KickCounter from './kick-counter';
 
 interface WebcamFeedProps {
   stream: MediaStream;
@@ -12,7 +13,12 @@ export default function WebcamFeed({ stream }: WebcamFeedProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const { detectObjects, isModelLoading } = useObjectDetection();
+  const {
+    detectPose,
+    isModelLoading,
+    kickCount,
+    resetCount
+  } = usePoseDetection();
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -47,32 +53,14 @@ export default function WebcamFeed({ stream }: WebcamFeedProps) {
     if (!ctx) return;
 
     const detectFrame = async () => {
-      // Get predictions
-      const predictions = await detectObjects(video);
+      const poses = await detectPose(video);
       
-      // Clear previous drawings
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw video frame
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Draw predictions
-      predictions.forEach((prediction: DetectedObject) => {
-        const [x, y, width, height] = prediction.bbox;
-        
-        // Draw bounding box
-        ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, width, height);
-
-        // Draw label
-        ctx.fillStyle = '#00FF00';
-        ctx.font = '16px Arial';
-        ctx.fillText(
-          `${prediction.class} ${Math.round(prediction.score * 100)}%`,
-          x,
-          y > 10 ? y - 5 : 10
-        );
+      // Draw skeleton
+      poses.forEach(pose => {
+        drawSkeleton(ctx, pose);
       });
 
       animationFrameId = requestAnimationFrame(detectFrame);
@@ -85,7 +73,7 @@ export default function WebcamFeed({ stream }: WebcamFeedProps) {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isVideoPlaying, isModelLoading, detectObjects]);
+  }, [isVideoPlaying, isModelLoading, detectPose]);
 
   return (
     <div className="relative w-full max-w-2xl aspect-video rounded-lg overflow-hidden bg-black/5">
@@ -101,6 +89,10 @@ export default function WebcamFeed({ stream }: WebcamFeedProps) {
         width={640}
         height={360}
       />
+      <KickCounter
+        count={kickCount}
+        onReset={resetCount}
+      />
       {isModelLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-sm">
           <div className="text-sm text-white">Loading AI model...</div>
@@ -108,4 +100,47 @@ export default function WebcamFeed({ stream }: WebcamFeedProps) {
       )}
     </div>
   );
+}
+
+function drawSkeleton(ctx: CanvasRenderingContext2D, pose: poseDetection.Pose) {
+  // Draw points
+  pose.keypoints.forEach(keypoint => {
+    if (keypoint.score && keypoint.score > 0.3) {
+      ctx.beginPath();
+      ctx.arc(keypoint.x, keypoint.y, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#00FF00';
+      ctx.fill();
+    }
+  });
+
+  // Draw lines between connected joints
+  const connections = [
+    ['left_shoulder', 'left_elbow'],
+    ['left_elbow', 'left_wrist'],
+    ['left_shoulder', 'left_hip'],
+    ['left_hip', 'left_knee'],
+    ['left_knee', 'left_ankle'],
+    ['right_shoulder', 'right_elbow'],
+    ['right_elbow', 'right_wrist'],
+    ['right_shoulder', 'right_hip'],
+    ['right_hip', 'right_knee'],
+    ['right_knee', 'right_ankle'],
+    ['left_shoulder', 'right_shoulder'],
+    ['left_hip', 'right_hip']
+  ];
+
+  connections.forEach(([from, to]) => {
+    const fromPoint = pose.keypoints.find(kp => kp.name === from);
+    const toPoint = pose.keypoints.find(kp => kp.name === to);
+
+    if (fromPoint && toPoint && fromPoint.score && toPoint.score &&
+        fromPoint.score > 0.3 && toPoint.score > 0.3) {
+      ctx.beginPath();
+      ctx.moveTo(fromPoint.x, fromPoint.y);
+      ctx.lineTo(toPoint.x, toPoint.y);
+      ctx.strokeStyle = '#00FF00';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  });
 } 
