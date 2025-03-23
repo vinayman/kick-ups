@@ -47,7 +47,7 @@ export function usePoseDetection(): UseKickDetectionReturn {
         detector.dispose();
       }
     };
-  }, []);
+  }, [detector]);
 
   const detectPose = useCallback(async (video: HTMLVideoElement) => {
     if (!detector) return [];
